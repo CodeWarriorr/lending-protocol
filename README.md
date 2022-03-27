@@ -7,7 +7,7 @@
 1. Depozyty
     * Stwórz kontrakt, który będzie pozwalał dowolnemu użytkownikowi na zdeponowanie dowolnej ilości wspieranego assetu. 
     * Assety posiadają współczynnik “collateralFactor” który jest ustawiany przez Ownera. “CollateralFactor” określa jaka część wartości depozytu jest uwzględniana jako pozytywne liquidity. 
-    * Kontrakt powinien umożliwiać obliczanie “liquidity” użytkownika, które można obliczyć za pomocą wzoru: ∑ <ilość assetu> \* <cena assetu> \* <collateralFactor> 
+    * Kontrakt powinien umożliwiać obliczanie “liquidity” użytkownika, które można obliczyć za pomocą wzoru: ∑ <ilość assetu> x <cena assetu> x <collateralFactor> 
 1. Pożyczki
     * Rozszerz kontrakt o możliwość brania pożyczek. 
     * Wartość możliwej do zaciągnięcia pożyczki nie może przekraczać wartości liquidity użytkownika
