@@ -64,7 +64,6 @@ describe("LendingProtocol: deposit", async () => {
         it("and adds rToken to user data", async () => {
           const userData = await LendingProtocol.getUserData(signer.address);
           expect(userData.reserves.length).to.eq(1);
-          // expect(userData.reserves).to.deep.eq([RToken.address]);
           expect(userData.reserves).to.deep.eq([wethAddress]);
         });
 
@@ -72,7 +71,6 @@ describe("LendingProtocol: deposit", async () => {
           const userLiquidity = await LendingProtocol.getUserLiquidity(
             signer.address
           );
-          // expect(userLiquidity).to.eq(amount);
           const assetUsdPrice = await PriceConsumer.getAssetUsdPrice(
             await RToken.getUnderlyingAsset()
           );
@@ -82,23 +80,10 @@ describe("LendingProtocol: deposit", async () => {
             .mul(assetUsdPrice[0])
             .mul(defaultCollateralFactor)
             .div(100);
-          // TODO: make math work
-          // expect(userLiquidity).to.be.closeTo(expectedLiquidity, 100);
+
           expect(userLiquidity).to.be.eq(expectedLiquidity);
-          // expect(false).to.eq(true);
-          console.log("userLiquidity", userLiquidity.toString());
         });
       });
-
-      // it("successfuly deposits asset and adds rToken to user data", async () => {
-      //   await LendingProtocol.deposit(wethAddress, amount);
-
-      //   const userData = await LendingProtocol.getUserData(signer.address);
-      //   expect(userData.reserves.length).to.eq(1);
-      //   expect(userData.reserves).to.deep.eq([RToken.address]);
-
-      //   // TODO: we need to check more things probably, like intrest reate
-      // });
     });
   });
 });

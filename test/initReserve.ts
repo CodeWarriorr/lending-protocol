@@ -13,29 +13,11 @@ import {
 } from "./utils/setup";
 
 describe("LendingProtocol: initReserve", () => {
-  // let PriceConsumer: PriceConsumer;
   let LendingProtocol: LendingProtocol;
   let Errors: Errors;
-  // const defaultCollateralFactor = 75;
-  // const defaultLiquidationIncentive = 5;
-  // const randomValidAddress = ethers.Wallet.createRandom().address;
 
   beforeEach(async () => {
     ({ Errors, LendingProtocol } = await deployContracts());
-    // const ErrorsFactory = await ethers.getContractFactory("Errors");
-    // Errors = await ErrorsFactory.deploy();
-    // const PriceConsumerFactory = await ethers.getContractFactory(
-    //   "PriceConsumer"
-    // );
-    // PriceConsumer = await PriceConsumerFactory.deploy(
-    //   ethMainnetFeedRegistryAddress
-    // );
-    // const LendingProtocolFactory = await ethers.getContractFactory(
-    //   "LendingProtocol"
-    // );
-    // LendingProtocol = await LendingProtocolFactory.deploy(
-    //   PriceConsumer.address
-    // );
   });
 
   describe("reverts", () => {
@@ -84,8 +66,6 @@ describe("LendingProtocol: initReserve", () => {
     it("gets newly created reserve data", async () => {
       const reserveData = await LendingProtocol.getReserveData(wethAddress);
 
-      // console.log(reserveData);
-
       expect(reserveData.rTokenAddress).to.eq(randomValidAddress);
       expect(reserveData.collateralFactor.toNumber()).to.eq(
         defaultCollateralFactor
@@ -94,13 +74,6 @@ describe("LendingProtocol: initReserve", () => {
         defaultLiquidationIncentive
       );
       expect(reserveData.isActive).to.eq(true);
-
-      // expect(reserveData).to.deep.include({
-      //   rTokenAddress: randomValidAddress,
-      //   collateralFactor: defaultCollateralFactor,
-      //   liquidationIncentive: defaultLiquidationIncentive,
-      //   isActive: true,
-      // });
     });
   });
 });
