@@ -1,7 +1,9 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./PriceConsumer.sol";
+import "hardhat/console.sol";
+
+import "./interfaces/IPriceFeed.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -30,7 +32,7 @@ contract LendingProtocol is Ownable {
     }
     mapping(address => UserData) private _users;
 
-    PriceConsumer internal priceConsumer;
+    IPriceFeed internal priceFeed;
 
     event Deposit(
         address indexed reserve,
@@ -39,8 +41,15 @@ contract LendingProtocol is Ownable {
     );
     event Borrow(address indexed reserve, address indexed user, uint256 amount);
 
-    constructor(PriceConsumer _priceConsumer) {
-        priceConsumer = _priceConsumer;
+    constructor(IPriceFeed _priceFeed) {
+        priceFeed = _priceFeed;
+    }
+
+    /**
+     * @dev
+     */
+    function updatePriceFeed(IPriceFeed _priceFeed) external onlyOwner {
+        priceFeed = _priceFeed;
     }
 
     /**
@@ -129,13 +138,13 @@ contract LendingProtocol is Ownable {
     /**
      * @dev
      */
-    function getUserLiquidity(address _user) public view returns (uint256) {
+    function getUserLiquidity(address _user) public view returns (int256) {
         UserData storage user = _users[_user];
         uint256 usdReserveBalance = 0;
         for (uint256 i = 0; i < user.reserves.length; i++) {
             address asset = user.reserves[i];
             ReserveData storage reserve = _reserves[asset];
-            RToken rToken = RToken(reserve.rTokenAddress); // TODO: simplify 
+            RToken rToken = RToken(reserve.rTokenAddress); // TODO: simplify
             uint256 balance = rToken.balanceOf(_user);
             (uint256 price, ) = priceConsumer.getAssetUsdPrice(
                 rToken.getUnderlyingAsset() // TODO: can we use address asset ?
@@ -172,12 +181,12 @@ contract LendingProtocol is Ownable {
         require(amount != 0, Errors.ZERO_AMOUNT);
         require(reserve.isActive, Errors.RESERVE_INACTIVE);
 
-        (uint256 price, ) = priceConsumer.getAssetUsdPrice(asset);
+        (uint256 price, ) = priceFeed.getAssetUsdPrice(asset);
         uint256 assetValueInUsd = (amount * price) / 10**reserve.decimals;
 
-        uint256 userLiquidity = getUserLiquidity(msg.sender);
+        int userLiquidity = getUserLiquidity(msg.sender);
         require(
-            assetValueInUsd < userLiquidity,
+            userLiquidity < 0 || assetValueInUsd < uint(userLiquidity),
             Errors.LIQUIDITY_LESS_THAN_BORROW
         );
 

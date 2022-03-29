@@ -15,7 +15,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 /**
  * @dev Reserve Token
  * TODO: MAKE SURE THAT CORE FUNCTIONS OF ERC20 MAKES SENSE
- * TODO: check liquidity before any transfers OR block all transfers 
+ * TODO: check liquidity before any transfers OR block all transfers
  */
 contract RToken is Context, IERC20 {
     using SafeERC20 for IERC20;
@@ -80,7 +80,10 @@ contract RToken is Context, IERC20 {
         return true;
     }
 
-    function getUnderlyingAsset() external view returns(address) {
+    /**
+    * @dev
+     */
+    function getUnderlyingAsset() external view returns (address) {
         return _underlyingAsset;
     }
 
