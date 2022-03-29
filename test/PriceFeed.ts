@@ -1,15 +1,15 @@
+/* eslint-disable node/no-missing-import */
 import { expect } from "chai";
 import { BigNumber } from "ethers";
-import { ethers } from "hardhat";
-import { PriceConsumer } from "../typechain";
+import { IPriceFeed } from "../typechain";
 import { ethAddress, wethAddress } from "./utils/config";
 import { deployContracts } from "./utils/setup";
 
-describe("PriceConsumer", () => {
-  let PriceConsumer: PriceConsumer;
+describe("PriceFeed", () => {
+  let PriceFeed: IPriceFeed;
 
   beforeEach(async () => {
-    ({ PriceConsumer } = await deployContracts());
+    ({ PriceFeed } = await deployContracts());
   });
 
   describe("getAssetUsdPrice", () => {
@@ -17,12 +17,12 @@ describe("PriceConsumer", () => {
       const randomValidAddress = "0x72AFAECF99C9d9C8215fF44C77B94B99C28741e8";
 
       await expect(
-        PriceConsumer.getAssetUsdPrice(randomValidAddress)
+        PriceFeed.getAssetUsdPrice(randomValidAddress)
       ).to.be.revertedWith("Feed not found");
     });
 
     it("returns eth price dumb REMOVE ME", async () => {
-      const price = await PriceConsumer.getAssetUsdPrice(
+      const price = await PriceFeed.getAssetUsdPrice(
         "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
       );
 
@@ -33,7 +33,7 @@ describe("PriceConsumer", () => {
     });
 
     it("returns eth price", async () => {
-      const price = await PriceConsumer.getAssetUsdPrice(ethAddress);
+      const price = await PriceFeed.getAssetUsdPrice(ethAddress);
 
       expect(price).to.be.instanceOf(Array);
       expect(price[0]).to.be.instanceOf(BigNumber);
@@ -42,7 +42,7 @@ describe("PriceConsumer", () => {
     });
 
     it("returns weth price", async () => {
-      const price = await PriceConsumer.getAssetUsdPrice(wethAddress);
+      const price = await PriceFeed.getAssetUsdPrice(wethAddress);
 
       expect(price).to.be.instanceOf(Array);
       expect(price[0]).to.be.instanceOf(BigNumber);

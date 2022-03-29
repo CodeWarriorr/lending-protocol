@@ -1,14 +1,8 @@
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+/* eslint-disable node/no-missing-import */
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { BigNumber } from "ethers";
-import {
-  DToken,
-  Errors,
-  LendingProtocol,
-  PriceConsumer,
-  RToken,
-} from "../typechain";
+import { DToken, Errors, LendingProtocol, PriceFeed } from "../typechain";
 import { wbtcAddress, wethAddress } from "./utils/config";
 import {
   defaultCollateralFactor,
@@ -19,16 +13,13 @@ import {
 
 describe("LendingProtocol: borrow", async () => {
   let LendingProtocol: LendingProtocol;
-  let PriceConsumer: PriceConsumer;
+  let PriceFeed: PriceFeed;
   let Errors: Errors;
-  let RToken: RToken;
   let DToken: DToken;
 
   beforeEach(async () => {
-    ({ LendingProtocol, Errors, PriceConsumer } = await deployContracts());
-    ({ RToken, DToken } = await deployWETHRTokenAndInitReserve(
-      LendingProtocol
-    ));
+    ({ LendingProtocol, Errors, PriceFeed } = await deployContracts());
+    ({ DToken } = await deployWETHRTokenAndInitReserve(LendingProtocol));
   });
 
   describe("reverts", () => {
@@ -81,7 +72,7 @@ describe("LendingProtocol: borrow", async () => {
           signer.address
         );
         await LendingProtocol.borrow(wethAddress, safeToBorrowAmount);
-        const borrowedAssetInUsd = await PriceConsumer.getAssetUsdPrice(
+        const borrowedAssetInUsd = await PriceFeed.getAssetUsdPrice(
           wethAddress
         );
         borrowedAmountInUsd = borrowedAssetInUsd[0]

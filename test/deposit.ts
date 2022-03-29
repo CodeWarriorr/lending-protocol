@@ -1,8 +1,9 @@
+/* eslint-disable node/no-missing-import */
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { BigNumber } from "ethers";
-import { Errors, LendingProtocol, PriceConsumer, RToken } from "../typechain";
+import { Errors, LendingProtocol, PriceFeed, RToken } from "../typechain";
 import { wbtcAddress, wethAddress } from "./utils/config";
 import {
   defaultCollateralFactor,
@@ -13,12 +14,12 @@ import {
 
 describe("LendingProtocol: deposit", async () => {
   let LendingProtocol: LendingProtocol;
-  let PriceConsumer: PriceConsumer;
+  let PriceFeed: PriceFeed;
   let Errors: Errors;
   let RToken: RToken;
 
   beforeEach(async () => {
-    ({ LendingProtocol, Errors, PriceConsumer } = await deployContracts());
+    ({ LendingProtocol, Errors, PriceFeed } = await deployContracts());
     ({ RToken } = await deployWETHRTokenAndInitReserve(LendingProtocol));
   });
 
@@ -71,10 +72,9 @@ describe("LendingProtocol: deposit", async () => {
           const userLiquidity = await LendingProtocol.getUserLiquidity(
             signer.address
           );
-          const assetUsdPrice = await PriceConsumer.getAssetUsdPrice(
+          const assetUsdPrice = await PriceFeed.getAssetUsdPrice(
             await RToken.getUnderlyingAsset()
           );
-          console.log("assetUsdPrice", assetUsdPrice);
 
           const expectedLiquidity = BigNumber.from(amountInEth)
             .mul(assetUsdPrice[0])

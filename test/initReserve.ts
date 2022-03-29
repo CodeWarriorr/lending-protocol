@@ -1,9 +1,7 @@
+/* eslint-disable node/no-missing-import */
 import { expect } from "chai";
-import { BigNumber } from "ethers";
-import { ethers } from "hardhat";
 import { Errors, LendingProtocol } from "../typechain";
-import { PriceConsumer } from "../typechain";
-import { ethMainnetFeedRegistryAddress, wethAddress } from "./utils/config";
+import { wethAddress } from "./utils/config";
 import {
   deployContracts,
   defaultCollateralFactor,

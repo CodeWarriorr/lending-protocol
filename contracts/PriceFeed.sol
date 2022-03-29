@@ -5,8 +5,10 @@ import "hardhat/console.sol";
 
 import "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
 import "@chainlink/contracts/src/v0.8/Denominations.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "./interfaces/IPriceFeed.sol";
 
-contract PriceConsumer {
+contract PriceFeed is IPriceFeed, Ownable {
     FeedRegistryInterface internal registry;
     mapping(address => address) private _wrapped;
 
@@ -15,13 +17,12 @@ contract PriceConsumer {
     }
 
     /**
-     * // TODO: add modifier
-     * // TODO: potentialy change name to something more accurate
      * @dev
      */
-    function updateFeedPriceAddress(address asset, address feedPriceAddress)
-        public
-    {
+    function updateAssetPriceFeedAddress(
+        address asset,
+        address feedPriceAddress
+    ) external override onlyOwner {
         _wrapped[asset] = feedPriceAddress;
     }
 
@@ -45,8 +46,9 @@ contract PriceConsumer {
      * @dev
      */
     function getAssetUsdPrice(address asset)
-        public
+        external
         view
+        override
         returns (uint256, uint8)
     {
         (, int256 price, , , ) = registry.latestRoundData(
@@ -63,12 +65,13 @@ contract PriceConsumer {
     }
 
     /**
-    *  TODO: consider using eth instead of USD
-    * @dev 
+     *  TODO: consider using eth instead of USD
+     * @dev
      */
     function getAssetEthPrice(address asset)
-        public
+        external
         view
+        override
         returns (uint256, uint8)
     {
         (, int256 price, , , ) = registry.latestRoundData(
@@ -88,8 +91,9 @@ contract PriceConsumer {
      * @dev
      */
     function getPrice(address asset, address quote)
-        public
+        external
         view
+        override
         returns (uint256, uint8)
     {
         (, int256 price, , , ) = registry.latestRoundData(
