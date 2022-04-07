@@ -88,6 +88,19 @@ contract RToken is Context, IERC20 {
     }
 
     /**
+    * @dev
+     */
+    function transferLiquidation(
+        address from,
+        address to,
+        uint256 amount
+    ) external onlyLendingProtocol returns(bool) {
+        _transfer(from, to, amount);
+
+        return balanceOf(from) == 0;
+    }
+
+    /**
      * @dev Returns the name of the token.
      */
     function name() public view virtual returns (string memory) {
