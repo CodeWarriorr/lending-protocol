@@ -21,3 +21,9 @@
     * Depozyty powinny zarabiać na oprocentowaniu, które wynikać powinno z utylizacji danego assetu - czyli proporcji ilości depozytów do pożyczek
     * Pożyczki powinny obciążać pożyczających oprocentowaniem, na którym zarabiają deponujący, oraz platforma. 
     * Oprocentowanie pożyczek > Oprocentowanie depozytu
+
+
+##### Potential improvements
+1. Limit liquidation to protect user by preventing liquidation of whole collaterall balance
+1. RToken could be transferrable up to user positive liquidity
+1. Liquidation could transfer underlying asset instead of RToken
