@@ -20,6 +20,8 @@ describe("LendingProtocol: initReserve", () => {
 
   describe("reverts", () => {
     it("when asset is not a contract", async () => {
+      const expectedError = await Errors.ASSET_IS_NOT_A_CONTRACT();
+
       await expect(
         LendingProtocol.initReserve(
           randomValidAddress,
@@ -30,7 +32,7 @@ describe("LendingProtocol: initReserve", () => {
           wethDecimals,
           true
         )
-      ).to.be.revertedWith(await Errors.ASSET_IS_NOT_A_CONTRACT());
+      ).to.be.revertedWith(expectedError);
     });
   });
 
@@ -48,6 +50,8 @@ describe("LendingProtocol: initReserve", () => {
     });
 
     it("reverts init already existing reserve", async () => {
+      const expectedError = await Errors.RESERVE_INITIALIZED();
+
       await expect(
         LendingProtocol.initReserve(
           wethAddress,
@@ -58,7 +62,7 @@ describe("LendingProtocol: initReserve", () => {
           wethDecimals,
           true
         )
-      ).to.be.revertedWith(await Errors.RESERVE_INITIALIZED());
+      ).to.be.revertedWith(expectedError);
     });
 
     it("gets newly created reserve data", async () => {

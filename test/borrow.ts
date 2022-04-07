@@ -23,21 +23,31 @@ describe("LendingProtocol: borrow", async () => {
   });
 
   describe("reverts", () => {
+    // it("TEST DELETE ME", async () => {
+
+    // });
+
     it("when amount is zero", async () => {
+      const expectedError = await Errors.ZERO_AMOUNT();
+
       await expect(LendingProtocol.borrow(wethAddress, 0)).to.be.revertedWith(
-        await Errors.ZERO_AMOUNT()
+        expectedError
       );
     });
 
     it("when reserve is not active", async () => {
+      const expectedError = await Errors.RESERVE_INACTIVE();
+
       await expect(LendingProtocol.borrow(wbtcAddress, 1)).to.be.revertedWith(
-        await Errors.RESERVE_INACTIVE()
+        expectedError
       );
     });
 
     it("when user has no liquidity", async () => {
+      const expectedError = await Errors.LIQUIDITY_LESS_THAN_BORROW();
+
       await expect(LendingProtocol.borrow(wethAddress, 1)).to.be.revertedWith(
-        await Errors.LIQUIDITY_LESS_THAN_BORROW()
+        expectedError
       );
     });
   });
@@ -55,9 +65,11 @@ describe("LendingProtocol: borrow", async () => {
     });
 
     it("reverts when user has not enough liquidity", async () => {
+      const expectedError = await Errors.LIQUIDITY_LESS_THAN_BORROW();
+
       await expect(
         LendingProtocol.borrow(wethAddress, initialWethDepositAmount)
-      ).to.be.revertedWith(await Errors.LIQUIDITY_LESS_THAN_BORROW());
+      ).to.be.revertedWith(expectedError);
     });
 
     describe("and user has enough liquidity", () => {

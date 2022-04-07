@@ -25,14 +25,18 @@ describe("LendingProtocol: deposit", async () => {
 
   describe("reverts", () => {
     it("when amount is zero", async () => {
+      const expectedError = await Errors.ZERO_AMOUNT();
+
       await expect(LendingProtocol.deposit(wethAddress, 0)).to.be.revertedWith(
-        await Errors.ZERO_AMOUNT()
+        expectedError
       );
     });
 
     it("when reserve is not initialized", async () => {
+      const expectedError = await Errors.RESERVE_INACTIVE();
+
       await expect(LendingProtocol.deposit(wbtcAddress, 1)).to.be.revertedWith(
-        await Errors.RESERVE_INACTIVE()
+        expectedError
       );
     });
 

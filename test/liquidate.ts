@@ -63,6 +63,8 @@ describe("LendingProtocol: liquidate", () => {
 
   describe("reverts", () => {
     it("when collateral is not active", async () => {
+      const expectedError = await Errors.RESERVE_INACTIVE();
+
       await expect(
         LendingProtocol.liquidate(
           wbtcAddress,
@@ -70,29 +72,35 @@ describe("LendingProtocol: liquidate", () => {
           randomValidAddress,
           1
         )
-      ).to.be.revertedWith(await Errors.RESERVE_INACTIVE());
+      ).to.be.revertedWith(expectedError);
     });
 
     it("when user has not deposited specifies collateral asset", async () => {
       await deployBtcRTokenAndInitReserve(LendingProtocol);
 
+      const expectedError = await Errors.NO_BORROWED_ASSET();
+
       await expect(
         LendingProtocol.liquidate(wethAddress, daiAddress, signer.address, 1)
-      ).to.be.revertedWith(await Errors.NO_BORROWED_ASSET());
+      ).to.be.revertedWith(expectedError);
     });
 
     it("when user has not borrowed specified debt asset", async () => {
+      const expectedError = await Errors.NO_BORROWED_ASSET();
+
       await expect(
         LendingProtocol.liquidate(wethAddress, daiAddress, signer.address, 1)
-      ).to.be.revertedWith(await Errors.NO_BORROWED_ASSET());
+      ).to.be.revertedWith(expectedError);
     });
 
     it("when user liquidity is positive", async () => {
       await LendingProtocol.borrow(daiAddress, ethers.utils.parseEther("1"));
 
+      const expectedError = await Errors.LIQUIDITY_POSITIVE();
+
       await expect(
         LendingProtocol.liquidate(wethAddress, daiAddress, signer.address, 1)
-      ).to.be.revertedWith(await Errors.LIQUIDITY_POSITIVE());
+      ).to.be.revertedWith(expectedError);
     });
   });
 
