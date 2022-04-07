@@ -48,6 +48,19 @@ contract DToken is Context, IERC20 {
     /**
      * @dev
      */
+    function burn(address account, uint256 amount)
+        external
+        onlyLendingProtocol
+        returns (bool)
+    {
+        _burn(account, amount);
+
+        return balanceOf(account) == 0;
+    }
+
+    /**
+     * @dev
+     */
     function mint(address account, uint256 amount)
         external
         onlyLendingProtocol
@@ -58,6 +71,13 @@ contract DToken is Context, IERC20 {
         _mint(account, amount);
 
         return balanceBefore == 0;
+    }
+
+    /**
+     * @dev
+     */
+    function getUnderlyingAsset() external view returns (address) {
+        return _underlyingAsset;
     }
 
     /**
@@ -92,7 +112,13 @@ contract DToken is Context, IERC20 {
     /**
      * @dev See {IERC20-balanceOf}.
      */
-    function balanceOf(address account) public view virtual override returns (uint256) {
+    function balanceOf(address account)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
         return _balances[account];
     }
 
@@ -142,7 +168,12 @@ contract DToken is Context, IERC20 {
      *
      * - `spender` cannot be the zero address.
      */
-    function approve(address spender, uint256 amount) external pure override returns (bool) {
+    function approve(address spender, uint256 amount)
+        external
+        pure
+        override
+        returns (bool)
+    {
         spender;
         amount;
         require(false, "APPROVE_NOT_SUPPORTED");
