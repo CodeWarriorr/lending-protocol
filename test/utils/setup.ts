@@ -173,10 +173,9 @@ export const deployDaiRTokenAndInitReserve = async (
   return { RToken, DToken };
 };
 
-export const swapETHForDaiAndDeposit = async (
+export const swapETHForDai = async (
   signer: SignerWithAddress,
-  amount: BigNumber,
-  LendingProtocol: LendingProtocol
+  amount: BigNumber
 ) => {
   const uniRouterAbi = [
     "function swapExactETHForTokens(uint amountOutMin, address[] path, address to, uint deadline) external payable returns (uint[] amounts)",
@@ -193,16 +192,33 @@ export const swapETHForDaiAndDeposit = async (
     }
   );
   await tx.wait();
+};
+
+export const swapETHForDaiAndDeposit = async (
+  signer: SignerWithAddress,
+  amount: BigNumber,
+  LendingProtocol: LendingProtocol
+) => {
+  await swapETHForDai(signer, amount);
 
   const dai = new ethers.Contract(daiAddress, erc20Abi, signer);
 
   const daiAmount = await dai.balanceOf(signer.address);
-  console.log("daiAmount", daiAmount);
 
   await dai.approve(LendingProtocol.address, daiAmount);
   await LendingProtocol.connect(signer).deposit(daiAddress, daiAmount);
 
   return daiAmount;
+};
+
+export const approveDai = async (
+  signer: SignerWithAddress,
+  spender: string,
+  amount: BigNumber
+) => {
+  const dai = new ethers.Contract(daiAddress, erc20Abi, signer);
+
+  await dai.approve(spender, amount);
 };
 
 export const deployBtcRToken = async (lendProtocolAddress: string) => {

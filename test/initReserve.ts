@@ -64,7 +64,8 @@ describe("LendingProtocol: initReserve", () => {
     it("gets newly created reserve data", async () => {
       const reserveData = await LendingProtocol.getReserveData(wethAddress);
 
-      expect(reserveData.rTokenAddress).to.eq(randomValidAddress);
+      expect(reserveData.rToken).to.eq(randomValidAddress);
+      expect(reserveData.dToken).to.eq(randomValidAddress);
       expect(reserveData.collateralFactor.toNumber()).to.eq(
         defaultCollateralFactor
       );
