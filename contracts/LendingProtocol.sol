@@ -150,9 +150,7 @@ contract LendingProtocol is Ownable {
             address asset = user.reserves[i];
             ReserveData storage reserve = _reserves[asset];
             uint256 balance = reserve.rToken.balanceOf(_user);
-            (uint256 price, ) = priceFeed.getAssetUsdPrice(
-                asset
-            );
+            (uint256 price, ) = priceFeed.getAssetUsdPrice(asset);
             uint256 liquidityBalance = _liquidityForReserve(reserve, balance);
             usdReserveBalance +=
                 (liquidityBalance * price) /
@@ -200,6 +198,9 @@ contract LendingProtocol is Ownable {
         emit Borrow(asset, msg.sender, amount);
     }
 
+    /**
+     * @dev
+     */
     function _getCollateralToLiquidate(
         ReserveData storage collateral,
         ReserveData storage debt,
@@ -231,6 +232,9 @@ contract LendingProtocol is Ownable {
         return (collateralAmount, debtAmount);
     }
 
+    /**
+     * @dev
+     */
     function _executeLiquidationTransfers(
         ReserveData storage collateral,
         ReserveData storage debt,
@@ -269,6 +273,9 @@ contract LendingProtocol is Ownable {
         );
     }
 
+    /**
+     * @dev
+     */
     function _removeAddressFromArray(
         address[] storage array,
         address addressToRemove
@@ -283,6 +290,9 @@ contract LendingProtocol is Ownable {
         }
     }
 
+    /**
+     * @dev
+     */
     function liquidate(
         address collateralAsset,
         address debtAsset,
