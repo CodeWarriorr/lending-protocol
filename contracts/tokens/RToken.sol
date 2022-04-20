@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
+import "hardhat/console.sol";
+
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "../LendingProtocol.sol";
 
 // import "../interfaces/IRToken.sol";
 
@@ -20,6 +23,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 contract RToken is Context, IERC20 {
     using SafeERC20 for IERC20;
 
+    uint256 private constant rateDecimals = 10**9;
+
     mapping(address => uint256) private _balances;
 
     mapping(address => mapping(address => uint256)) private _allowances;
@@ -29,19 +34,19 @@ contract RToken is Context, IERC20 {
     string private _name;
     string private _symbol;
 
-    address private _lendingProtocol;
+    LendingProtocol private _lendingProtocol;
     address private _underlyingAsset;
 
     modifier onlyLendingProtocol() {
         require(
-            msg.sender == _lendingProtocol,
+            msg.sender == address(_lendingProtocol),
             "RToken: Only Lending Protocol allowed"
         );
         _;
     }
 
     constructor(
-        address lendingProtocol_,
+        LendingProtocol lendingProtocol_,
         address underlyingAsset_,
         string memory name_,
         string memory symbol_
@@ -55,14 +60,23 @@ contract RToken is Context, IERC20 {
     /**
      * @dev
      */
-    function mint(address account, uint256 amount)
-        external
-        onlyLendingProtocol
-        returns (bool)
-    {
+    function getRateDecimals() external pure returns (uint256) {
+        return rateDecimals;
+    }
+
+    /**
+     * @dev
+     */
+    function mint(
+        address account,
+        uint256 amount,
+        uint256 currentRate
+    ) external onlyLendingProtocol returns (bool) {
         uint256 balanceBefore = balanceOf(account);
 
-        _mint(account, amount);
+        uint256 amountBeforeRate = (amount * rateDecimals) / currentRate;
+
+        _mint(account, amountBeforeRate);
 
         return balanceBefore == 0;
     }
@@ -81,20 +95,20 @@ contract RToken is Context, IERC20 {
     }
 
     /**
-    * @dev
+     * @dev
      */
     function getUnderlyingAsset() external view returns (address) {
         return _underlyingAsset;
     }
 
     /**
-    * @dev
+     * @dev
      */
     function transferLiquidation(
         address from,
         address to,
         uint256 amount
-    ) external onlyLendingProtocol returns(bool) {
+    ) external onlyLendingProtocol returns (bool) {
         _transfer(from, to, amount);
 
         return balanceOf(from) == 0;
@@ -126,7 +140,9 @@ contract RToken is Context, IERC20 {
      * @dev See {IERC20-totalSupply}.
      */
     function totalSupply() public view virtual override returns (uint256) {
-        return _totalSupply;
+        return
+            (_totalSupply * rateDecimals) /
+            _lendingProtocol.getInterestRate(_underlyingAsset);
     }
 
     /**
@@ -139,7 +155,9 @@ contract RToken is Context, IERC20 {
         override
         returns (uint256)
     {
-        return _balances[account];
+        return
+            (_balances[account] * rateDecimals) /
+            _lendingProtocol.getInterestRate(_underlyingAsset);
     }
 
     /**
