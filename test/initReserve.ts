@@ -1,6 +1,6 @@
 /* eslint-disable node/no-missing-import */
 import { expect } from "chai";
-import { Errors, LendingProtocol } from "../typechain";
+import { DToken, Errors, LendingProtocol, RToken } from "../typechain";
 import { wethAddress } from "./utils/config";
 import {
   deployContracts,
@@ -8,6 +8,8 @@ import {
   defaultLiquidationIncentive,
   randomValidAddress,
   wethDecimals,
+  deployWETHRToken,
+  deployWETHDToken,
 } from "./utils/setup";
 
 describe("LendingProtocol: initReserve", () => {
@@ -37,11 +39,17 @@ describe("LendingProtocol: initReserve", () => {
   });
 
   describe("and init reserve is successful", () => {
+    let RToken: RToken;
+    let DToken: DToken;
+
     beforeEach(async () => {
+      ({ RToken } = await deployWETHRToken(LendingProtocol.address));
+      ({ DToken } = await deployWETHDToken(LendingProtocol.address));
+
       await LendingProtocol.initReserve(
         wethAddress,
-        randomValidAddress,
-        randomValidAddress,
+        RToken.address,
+        DToken.address,
         defaultCollateralFactor,
         defaultLiquidationIncentive,
         wethDecimals,
@@ -55,8 +63,8 @@ describe("LendingProtocol: initReserve", () => {
       await expect(
         LendingProtocol.initReserve(
           wethAddress,
-          randomValidAddress,
-          randomValidAddress,
+          RToken.address,
+          DToken.address,
           defaultCollateralFactor,
           defaultLiquidationIncentive,
           wethDecimals,
@@ -68,8 +76,8 @@ describe("LendingProtocol: initReserve", () => {
     it("gets newly created reserve data", async () => {
       const reserveData = await LendingProtocol.getReserveData(wethAddress);
 
-      expect(reserveData.rToken).to.eq(randomValidAddress);
-      expect(reserveData.dToken).to.eq(randomValidAddress);
+      expect(reserveData.rToken).to.eq(RToken.address);
+      expect(reserveData.dToken).to.eq(DToken.address);
       expect(reserveData.collateralFactor.toNumber()).to.eq(
         defaultCollateralFactor
       );
