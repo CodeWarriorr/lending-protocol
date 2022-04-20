@@ -1,7 +1,7 @@
 /* eslint-disable camelcase */
 /* eslint-disable node/no-missing-import */
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { BigNumber } from "ethers";
+import { BigNumber, Signer } from "ethers";
 import { ethers } from "hardhat";
 import { LendingProtocol } from "../../typechain";
 import {
@@ -205,10 +205,20 @@ export const swapETHForDaiAndDeposit = async (
 
   const daiAmount = await dai.balanceOf(signer.address);
 
-  await dai.approve(LendingProtocol.address, daiAmount);
-  await LendingProtocol.connect(signer).deposit(daiAddress, daiAmount);
+  await approveAndDepositDai(signer, daiAmount, LendingProtocol);
 
   return daiAmount;
+};
+
+export const approveAndDepositDai = async (
+  signer: SignerWithAddress,
+  amount: BigNumber,
+  LendingProtocol: LendingProtocol
+) => {
+  const dai = new ethers.Contract(daiAddress, erc20Abi, signer);
+
+  await dai.approve(LendingProtocol.address, amount);
+  await LendingProtocol.connect(signer).deposit(daiAddress, amount);
 };
 
 export const approveDai = async (
