@@ -64,6 +64,8 @@ describe("LendingProtocol: borrow", async () => {
       await LendingProtocol.deposit(wethAddress, initialWethDepositAmount);
     });
 
+    // TODO: case for enough liquidity but no enough asset to borrow !
+
     it("reverts when user has not enough liquidity", async () => {
       const expectedError = await Errors.LIQUIDITY_LESS_THAN_BORROW();
 
