@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 // import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
+import "../LendingProtocol.sol";
 
 /**
  * @dev Debt Token
@@ -13,6 +14,9 @@ import "@openzeppelin/contracts/utils/Context.sol";
  */
 contract DToken is Context, IERC20 {
     // using SafeERC20 for ERC20;
+
+    uint256 private constant rateDecimals = 10**9;
+
     mapping(address => uint256) private _balances;
 
     mapping(address => mapping(address => uint256)) private _allowances;
@@ -22,19 +26,19 @@ contract DToken is Context, IERC20 {
     string private _name;
     string private _symbol;
 
-    address public _lendingProtocol;
-    address public _underlyingAsset;
+    LendingProtocol private _lendingProtocol;
+    address private _underlyingAsset;
 
     modifier onlyLendingProtocol() {
         require(
-            msg.sender == _lendingProtocol,
+            msg.sender == address(_lendingProtocol),
             "RToken: Only Lending Protocol allowed"
         );
         _;
     }
 
     constructor(
-        address lendingProtocol_,
+        LendingProtocol lendingProtocol_,
         address underlyingAsset_,
         string memory name_,
         string memory symbol_
@@ -61,16 +65,25 @@ contract DToken is Context, IERC20 {
     /**
      * @dev
      */
-    function mint(address account, uint256 amount)
-        external
-        onlyLendingProtocol
-        returns (bool)
-    {
+    function mint(
+        address account,
+        uint256 amount,
+        uint256 currentRate
+    ) external onlyLendingProtocol returns (bool) {
         uint256 balanceBefore = balanceOf(account);
 
-        _mint(account, amount);
+        uint256 amountBeforeRate = (amount * rateDecimals) / currentRate;
+
+        _mint(account, amountBeforeRate);
 
         return balanceBefore == 0;
+    }
+
+    /**
+     * @dev
+     */
+    function getRateDecimals() external pure returns (uint256) {
+        return rateDecimals;
     }
 
     /**
@@ -106,7 +119,9 @@ contract DToken is Context, IERC20 {
      * @dev See {IERC20-totalSupply}.
      */
     function totalSupply() public view virtual override returns (uint256) {
-        return _totalSupply;
+        return
+            (_totalSupply * rateDecimals) /
+            _lendingProtocol.getInterestRate(_underlyingAsset);
     }
 
     /**
@@ -119,7 +134,9 @@ contract DToken is Context, IERC20 {
         override
         returns (uint256)
     {
-        return _balances[account];
+        return
+            (_balances[account] * rateDecimals) /
+            _lendingProtocol.getBorrowRate(_underlyingAsset);
     }
 
     /**
