@@ -11,15 +11,30 @@ import "./tokens/RToken.sol";
 import "./tokens/DToken.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./libraries/Errors.sol";
+import "./libraries/WadRayMath.sol";
 
 contract LendingProtocol is Ownable {
     using SafeERC20 for IERC20;
+    using WadRayMath for uint;
+
+    uint256 private constant rateDecimals = 10**9; // TODO: make capital letters
+    uint256 internal constant SECONDS_PER_YEAR = 365 days;
 
     struct ReserveData {
-        RToken rToken;
-        DToken dToken;
+        RToken rToken; // Reserve ERC20 Token
+        DToken dToken; // Debt ERC20 Token
         uint256 collateralFactor; // 100% = 100, 75% = 75
         uint256 liquidationIncentive; // 5% = 5
+        uint256 interestRate; // Init with 10**9;
+        uint256 borrowRate; // Init with 10**9;
+        uint256 rateThreshold;
+        uint256 interestRateBase;
+        uint256 interestRateSlope1;
+        uint256 interestRateSlope2;
+        uint256 borrowRateBase;
+        uint256 borrowRateSlope1;
+        uint256 borrowRateSlope2;
+        uint40 lastUpdateTimestamp; // uint40 has 34K-year-till-overflow
         uint8 decimals; // Underlying Asset Decimals
         bool isActive;
     }
@@ -82,8 +97,25 @@ contract LendingProtocol is Ownable {
         reserve.dToken = DToken(dTokenAddress);
         reserve.collateralFactor = collateralFactor;
         reserve.liquidationIncentive = liquidationIncentive;
+        reserve.interestRate = reserve.rToken.getRateDecimals();
+        reserve.borrowRate = reserve.dToken.getRateDecimals();
         reserve.decimals = decimals;
         reserve.isActive = isActive;
+
+        // TODO: consider using rToken and dToken rate decimals
+        // Rate threshold for slope2
+        reserve.rateThreshold = 70 * rateDecimals;
+        // Interest rate params
+        reserve.interestRateBase = 0;
+        reserve.interestRateSlope1 = 7 * rateDecimals;
+        reserve.interestRateSlope2 = 1000 * rateDecimals;
+        // Borrow rate params
+        reserve.borrowRateBase = 0;
+        reserve.borrowRateSlope1 = 10 * rateDecimals;
+        reserve.borrowRateSlope2 = 1000 * rateDecimals;
+
+        // Init update timestamp
+        reserve.lastUpdateTimestamp = uint40(block.timestamp);
     }
 
     /**
@@ -95,6 +127,20 @@ contract LendingProtocol is Ownable {
         returns (ReserveData memory)
     {
         return _reserves[asset];
+    }
+
+    /**
+     * @dev
+     */
+    function getInterestRate(address asset) external view returns (uint256) {
+        return _reserves[asset].interestRate;
+    }
+
+    /**
+     * @dev
+     */
+    function getBorrowRate(address asset) external view returns (uint256) {
+        return _reserves[asset].borrowRate;
     }
 
     /**
@@ -112,7 +158,11 @@ contract LendingProtocol is Ownable {
             amount
         );
 
-        bool isNewReserve = reserve.rToken.mint(msg.sender, amount);
+        bool isNewReserve = reserve.rToken.mint(
+            msg.sender,
+            amount,
+            reserve.interestRate
+        );
 
         if (isNewReserve) {
             UserData storage user = _users[msg.sender];
@@ -145,6 +195,7 @@ contract LendingProtocol is Ownable {
      */
     function getUserLiquidity(address _user) public view returns (int256) {
         UserData storage user = _users[_user];
+
         uint256 usdReserveBalance = 0;
         for (uint256 i = 0; i < user.reserves.length; i++) {
             address asset = user.reserves[i];
@@ -187,7 +238,11 @@ contract LendingProtocol is Ownable {
             Errors.LIQUIDITY_LESS_THAN_BORROW
         );
 
-        bool isNewDebt = reserve.dToken.mint(msg.sender, amount);
+        bool isNewDebt = reserve.dToken.mint(
+            msg.sender,
+            amount,
+            reserve.borrowRate
+        );
         if (isNewDebt) {
             UserData storage user = _users[msg.sender];
             user.debts.push(asset);
@@ -347,5 +402,38 @@ contract LendingProtocol is Ownable {
             debtAmountNeeded,
             msg.sender
         );
+    }
+
+    function _getUtilisationRate(ReserveData storage reserve)
+        internal
+        view
+        returns (uint256)
+    {
+        // =S5*S2*100/S4*S2/S2
+        uint256 collateralSupply = reserve.rToken.totalSupply();
+        uint256 debtSupply = reserve.dToken.totalSupply();
+
+        console.log("collateralSupply", collateralSupply);
+        console.log("debtSupply", debtSupply);
+
+        if (collateralSupply == 0) {
+            return 0;
+        }
+
+        uint256 utilisationRate = (((debtSupply * rateDecimals * 100) /
+            collateralSupply) * rateDecimals) / rateDecimals;
+
+        // uint utilisationRate = 
+
+        return utilisationRate;
+    }
+
+    /**
+     * @dev
+     */
+    function getUtilisationRate(address asset) external view returns (uint256) {
+        ReserveData storage reserve = _reserves[asset];
+
+        return _getUtilisationRate(reserve);
     }
 }
