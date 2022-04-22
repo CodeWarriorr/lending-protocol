@@ -27,6 +27,7 @@ import {
   deployBtcRTokenAndInitReserve,
   approveDai,
 } from "./utils/setup";
+import { toRay } from "./utils/units";
 
 describe("LendingProtocol: interest rates", () => {
   let signer: SignerWithAddress;
@@ -55,10 +56,10 @@ describe("LendingProtocol: interest rates", () => {
 
   describe("utilisation rate", () => {
     const depositDaiAmount = ethers.utils.parseEther("100");
-    let rateDecimals: BigNumber;
-    beforeEach(async () => {
-      rateDecimals = await DaiRToken.getRateDecimals();
-    });
+    // let rateDecimals: BigNumber;
+    // beforeEach(async () => {
+    //   // rateDecimals = await DaiRToken.getRateDecimals();
+    // });
 
     it("when there is no deposit and no borrow", async () => {
       const utilisationRate = await LendingProtocol.getUtilisationRate(
@@ -92,7 +93,7 @@ describe("LendingProtocol: interest rates", () => {
             daiAddress
           );
 
-          expect(utilisationRate.div(rateDecimals)).to.be.eq(50);
+          expect(utilisationRate).to.be.eq(toRay("0.5"));
         });
       });
     });
