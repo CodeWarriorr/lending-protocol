@@ -8,8 +8,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../LendingProtocol.sol";
+import "../libraries/WadRayMath.sol";
 
-// import "../interfaces/IRToken.sol";
 
 /**
   TODO: extend with erc20, erc20 burnable, ownable (?), pausable (?)
@@ -22,8 +22,7 @@ import "../LendingProtocol.sol";
  */
 contract RToken is Context, IERC20 {
     using SafeERC20 for IERC20;
-
-    uint256 private constant rateDecimals = 10**9;
+    using WadRayMath for uint256;
 
     mapping(address => uint256) private _balances;
 
@@ -60,13 +59,6 @@ contract RToken is Context, IERC20 {
     /**
      * @dev
      */
-    function getRateDecimals() external pure returns (uint256) {
-        return rateDecimals;
-    }
-
-    /**
-     * @dev
-     */
     function mint(
         address account,
         uint256 amount,
@@ -74,7 +66,7 @@ contract RToken is Context, IERC20 {
     ) external onlyLendingProtocol returns (bool) {
         uint256 balanceBefore = balanceOf(account);
 
-        uint256 amountBeforeRate = (amount * rateDecimals) / currentRate;
+        uint amountBeforeRate = amount.rayDiv(currentRate);
 
         _mint(account, amountBeforeRate);
 
@@ -141,8 +133,9 @@ contract RToken is Context, IERC20 {
      */
     function totalSupply() public view virtual override returns (uint256) {
         return
-            (_totalSupply * rateDecimals) /
-            _lendingProtocol.getInterestRate(_underlyingAsset);
+            _totalSupply.rayMul(
+                _lendingProtocol.getInterestRate(_underlyingAsset)
+            );
     }
 
     /**
@@ -156,8 +149,9 @@ contract RToken is Context, IERC20 {
         returns (uint256)
     {
         return
-            (_balances[account] * rateDecimals) /
-            _lendingProtocol.getInterestRate(_underlyingAsset);
+            _balances[account].rayMul(
+                _lendingProtocol.getInterestRate(_underlyingAsset)
+            );
     }
 
     /**

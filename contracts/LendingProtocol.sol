@@ -12,10 +12,12 @@ import "./tokens/DToken.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./libraries/Errors.sol";
 import "./libraries/WadRayMath.sol";
+import "./libraries/PercentageMath.sol";
 
 contract LendingProtocol is Ownable {
     using SafeERC20 for IERC20;
-    using WadRayMath for uint;
+    using WadRayMath for uint256;
+    using PercentageMath for uint256;
 
     uint256 private constant rateDecimals = 10**9; // TODO: make capital letters
     uint256 internal constant SECONDS_PER_YEAR = 365 days;
@@ -25,15 +27,15 @@ contract LendingProtocol is Ownable {
         DToken dToken; // Debt ERC20 Token
         uint256 collateralFactor; // 100% = 100, 75% = 75
         uint256 liquidationIncentive; // 5% = 5
-        uint256 interestRate; // Init with 10**9;
-        uint256 borrowRate; // Init with 10**9;
-        uint256 rateThreshold;
-        uint256 interestRateBase;
-        uint256 interestRateSlope1;
-        uint256 interestRateSlope2;
-        uint256 borrowRateBase;
-        uint256 borrowRateSlope1;
-        uint256 borrowRateSlope2;
+        uint256 interestRate; // Init with one ray;
+        uint256 borrowRate; // Init with one ray;
+        uint256 rateThreshold; // In ray
+        uint256 interestRateBase; // In ray
+        uint256 interestRateSlope1; // In ray
+        uint256 interestRateSlope2; // In ray
+        uint256 borrowRateBase; // In ray
+        uint256 borrowRateSlope1; // In ray
+        uint256 borrowRateSlope2; // In ray
         uint40 lastUpdateTimestamp; // uint40 has 34K-year-till-overflow
         uint8 decimals; // Underlying Asset Decimals
         bool isActive;
@@ -97,22 +99,22 @@ contract LendingProtocol is Ownable {
         reserve.dToken = DToken(dTokenAddress);
         reserve.collateralFactor = collateralFactor;
         reserve.liquidationIncentive = liquidationIncentive;
-        reserve.interestRate = reserve.rToken.getRateDecimals();
-        reserve.borrowRate = reserve.dToken.getRateDecimals();
-        reserve.decimals = decimals;
+
+        reserve.interestRate = WadRayMath.ray();
+        reserve.borrowRate = WadRayMath.ray();
+        reserve.decimals = decimals; // TODO: convert to ONE UNIT and make WadRayMath count unitMul, unitDiv AND probably rename to UnitMath
         reserve.isActive = isActive;
 
-        // TODO: consider using rToken and dToken rate decimals
-        // Rate threshold for slope2
-        reserve.rateThreshold = 70 * rateDecimals;
+        // Rate threshold for slope2 kick in
+        reserve.rateThreshold = WadRayMath.ray().percentMul(7000); // 70%
         // Interest rate params
         reserve.interestRateBase = 0;
-        reserve.interestRateSlope1 = 7 * rateDecimals;
-        reserve.interestRateSlope2 = 1000 * rateDecimals;
+        reserve.interestRateSlope1 = WadRayMath.ray().percentMul(700); // 7% 
+        reserve.interestRateSlope2 = WadRayMath.ray().percentMul(30000); // 300 %
         // Borrow rate params
-        reserve.borrowRateBase = 0;
-        reserve.borrowRateSlope1 = 10 * rateDecimals;
-        reserve.borrowRateSlope2 = 1000 * rateDecimals;
+        reserve.borrowRateBase = WadRayMath.ray().percentMul(300); // 3% 
+        reserve.borrowRateSlope1 = WadRayMath.ray().percentMul(1000); // 10% 
+        reserve.borrowRateSlope2 =  WadRayMath.ray().percentMul(30000); // 300 %
 
         // Init update timestamp
         reserve.lastUpdateTimestamp = uint40(block.timestamp);
@@ -187,6 +189,7 @@ contract LendingProtocol is Ownable {
         view
         returns (uint256)
     {
+        // TODO: make this percent math ?
         return (balance * reserve.collateralFactor) / 100;
     }
 
@@ -403,27 +406,23 @@ contract LendingProtocol is Ownable {
             msg.sender
         );
     }
-
+    
+    /**
+    * @dev Return reserve utilistation rate, expressed in ray. 100% is 1 ray.
+     */
     function _getUtilisationRate(ReserveData storage reserve)
         internal
         view
         returns (uint256)
     {
-        // =S5*S2*100/S4*S2/S2
         uint256 collateralSupply = reserve.rToken.totalSupply();
         uint256 debtSupply = reserve.dToken.totalSupply();
-
-        console.log("collateralSupply", collateralSupply);
-        console.log("debtSupply", debtSupply);
 
         if (collateralSupply == 0) {
             return 0;
         }
 
-        uint256 utilisationRate = (((debtSupply * rateDecimals * 100) /
-            collateralSupply) * rateDecimals) / rateDecimals;
-
-        // uint utilisationRate = 
+        uint utilisationRate = debtSupply.rayDiv(collateralSupply);
 
         return utilisationRate;
     }

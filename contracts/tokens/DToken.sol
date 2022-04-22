@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
+import "hardhat/console.sol";
+
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 // import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "../LendingProtocol.sol";
+import "../libraries/WadRayMath.sol";
 
 /**
  * @dev Debt Token
@@ -14,8 +17,7 @@ import "../LendingProtocol.sol";
  */
 contract DToken is Context, IERC20 {
     // using SafeERC20 for ERC20;
-
-    uint256 private constant rateDecimals = 10**9;
+    using WadRayMath for uint256;
 
     mapping(address => uint256) private _balances;
 
@@ -72,18 +74,11 @@ contract DToken is Context, IERC20 {
     ) external onlyLendingProtocol returns (bool) {
         uint256 balanceBefore = balanceOf(account);
 
-        uint256 amountBeforeRate = (amount * rateDecimals) / currentRate;
+        uint amountBeforeRate = amount.rayDiv(currentRate);
 
         _mint(account, amountBeforeRate);
 
         return balanceBefore == 0;
-    }
-
-    /**
-     * @dev
-     */
-    function getRateDecimals() external pure returns (uint256) {
-        return rateDecimals;
     }
 
     /**
@@ -120,8 +115,9 @@ contract DToken is Context, IERC20 {
      */
     function totalSupply() public view virtual override returns (uint256) {
         return
-            (_totalSupply * rateDecimals) /
-            _lendingProtocol.getInterestRate(_underlyingAsset);
+            _totalSupply.rayMul(
+                _lendingProtocol.getBorrowRate(_underlyingAsset)
+            );
     }
 
     /**
@@ -135,8 +131,9 @@ contract DToken is Context, IERC20 {
         returns (uint256)
     {
         return
-            (_balances[account] * rateDecimals) /
-            _lendingProtocol.getBorrowRate(_underlyingAsset);
+            _balances[account].rayMul(
+                _lendingProtocol.getBorrowRate(_underlyingAsset)
+            );
     }
 
     /**
