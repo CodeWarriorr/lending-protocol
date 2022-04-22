@@ -26,4 +26,13 @@ library PercentageMath {
 
     return (value * PERCENTAGE + halfPercent) / percent;
   }
+
+  /**
+   * @dev Percentage of a to b
+   */
+  function percentageOf(uint a, uint b) internal pure returns(uint) {
+    uint halfB = b / 2;
+
+    return (a * PERCENTAGE + halfB) / b; 
+  }
 }
