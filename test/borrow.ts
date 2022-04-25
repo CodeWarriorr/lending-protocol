@@ -23,10 +23,6 @@ describe("LendingProtocol: borrow", async () => {
   });
 
   describe("reverts", () => {
-    // it("TEST DELETE ME", async () => {
-
-    // });
-
     it("when amount is zero", async () => {
       const expectedError = await Errors.ZERO_AMOUNT();
 
@@ -53,7 +49,7 @@ describe("LendingProtocol: borrow", async () => {
   });
 
   describe("and user has enough liquidity", async () => {
-    const initialWethDepositAmount = ethers.utils.parseEther("100");
+    const initialWethDepositAmount = ethers.utils.parseEther("5");
     const [signer] = await ethers.getSigners();
     beforeEach(async () => {
       await swapETHForWETHAndApprove(

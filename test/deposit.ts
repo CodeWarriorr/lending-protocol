@@ -48,7 +48,7 @@ describe("LendingProtocol: deposit", async () => {
 
     describe("and user has allowance and asset asset balance", () => {
       let signer: SignerWithAddress;
-      const amountInEth = "100";
+      const amountInEth = "10";
       const amount = ethers.utils.parseEther(amountInEth);
 
       beforeEach(async () => {
