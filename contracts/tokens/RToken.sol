@@ -160,10 +160,6 @@ contract RToken is Context, IERC20 {
         override
         returns (uint256)
     {
-        // console.log("_lendingProtocol.getInterestIndex(_underlyingAsset)", _lendingProtocol.getInterestIndex(_underlyingAsset));
-        // console.log("interest balance of", _balances[account].rayMul(
-        //         _lendingProtocol.getInterestIndex(_underlyingAsset)
-        //     ));
         return
             _balances[account].rayMul(
                 _lendingProtocol.getInterestIndex(_underlyingAsset)

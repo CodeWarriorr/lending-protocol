@@ -73,11 +73,9 @@ contract DToken is Context, IERC20 {
         address account,
         uint256 amount,
         uint currentIndex
-        // uint256 currentRate
     ) external onlyLendingProtocol returns (bool) {
         uint256 balanceBefore = balanceOf(account);
 
-        // uint amountBeforeRate = amount.rayDiv(currentRate);
         uint amountBeforeRate = amount.rayDiv(currentIndex);
 
         _mint(account, amountBeforeRate);
@@ -134,10 +132,6 @@ contract DToken is Context, IERC20 {
         override
         returns (uint256)
     {
-        // console.log("_lendingProtocol.getBorrowIndex(_underlyingAsset)",_lendingProtocol.getBorrowIndex(_underlyingAsset));
-        // console.log("debt balance of",_balances[account].rayMul(
-        //         _lendingProtocol.getBorrowIndex(_underlyingAsset)
-        //     ));
         return
             _balances[account].rayMul(
                 _lendingProtocol.getBorrowIndex(_underlyingAsset)
