@@ -7,17 +7,13 @@ import {
   DToken,
   Errors,
   LendingProtocol,
-  PriceFeed,
   PriceFeedMock,
   RToken,
 } from "../typechain";
 import { daiAddress, wbtcAddress, wethAddress } from "./utils/config";
 import {
   deployContracts,
-  defaultCollateralFactor,
-  defaultLiquidationIncentive,
   randomValidAddress,
-  wethDecimals,
   deployDaiRTokenAndInitReserve,
   deployWETHRTokenAndInitReserve,
   swapETHForWETHAndApprove,
@@ -32,24 +28,22 @@ describe("LendingProtocol: liquidate", () => {
   let user1: SignerWithAddress;
   let user2: SignerWithAddress;
   let LendingProtocol: LendingProtocol;
-  let PriceFeed: PriceFeed;
   let PriceFeedMock: PriceFeedMock;
   let Errors: Errors;
   let WethRToken: RToken;
-  let WethDToken: DToken;
-  let DaiRToken: RToken;
   let DaiDToken: DToken;
   const wethCollateralAmount = ethers.utils.parseEther("100");
 
   beforeEach(async () => {
     [signer, user1, user2] = await ethers.getSigners();
 
-    ({ LendingProtocol, Errors, PriceFeed, PriceFeedMock } =
-      await deployContracts());
-    ({ RToken: DaiRToken, DToken: DaiDToken } =
-      await deployDaiRTokenAndInitReserve(LendingProtocol));
-    ({ RToken: WethRToken, DToken: WethDToken } =
-      await deployWETHRTokenAndInitReserve(LendingProtocol));
+    ({ LendingProtocol, Errors, PriceFeedMock } = await deployContracts());
+    ({ DToken: DaiDToken } = await deployDaiRTokenAndInitReserve(
+      LendingProtocol
+    ));
+    ({ RToken: WethRToken } = await deployWETHRTokenAndInitReserve(
+      LendingProtocol
+    ));
 
     await swapETHForWETHAndApprove(
       signer,
@@ -185,7 +179,7 @@ describe("LendingProtocol: liquidate", () => {
             userCollateralBalanceBefore.sub(
               expectedCollateralWithBonusLiquidation
             )
-          ).to.be.eq(userCollateralBalance);
+          ).to.be.closeTo(userCollateralBalance, 1_000_000_000_000);
         });
 
         it("user debt balance is zero", async () => {
@@ -199,8 +193,9 @@ describe("LendingProtocol: liquidate", () => {
             user1.address
           );
 
-          expect(liquidatorCollateralBalance).to.eq(
-            expectedCollateralWithBonusLiquidation
+          expect(liquidatorCollateralBalance).to.closeTo(
+            expectedCollateralWithBonusLiquidation,
+            500_000_000_000
           );
         });
 
@@ -242,7 +237,10 @@ describe("LendingProtocol: liquidate", () => {
         it("user debt balance is lower", async () => {
           const userDebtBalance = await DaiDToken.balanceOf(signer.address);
 
-          expect(userDebtBalance).to.be.eq(ethers.utils.parseEther("400"));
+          expect(userDebtBalance).to.be.closeTo(
+            ethers.utils.parseEther("400"),
+            10_000_000_000_000
+          );
         });
 
         it("liquidator collateral balance has increased", async () => {

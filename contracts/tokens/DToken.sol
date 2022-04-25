@@ -54,12 +54,14 @@ contract DToken is Context, IERC20 {
     /**
      * @dev
      */
-    function burn(address account, uint256 amount)
+    function burn(address account, uint256 amount, uint index)
         external
         onlyLendingProtocol
         returns (bool)
     {
-        _burn(account, amount);
+        uint amountBeforeIndex = amount.rayDiv(index);
+
+        _burn(account, amountBeforeIndex);
 
         return balanceOf(account) == 0;
     }
@@ -70,11 +72,13 @@ contract DToken is Context, IERC20 {
     function mint(
         address account,
         uint256 amount,
-        uint256 currentRate
+        uint currentIndex
+        // uint256 currentRate
     ) external onlyLendingProtocol returns (bool) {
         uint256 balanceBefore = balanceOf(account);
 
-        uint amountBeforeRate = amount.rayDiv(currentRate);
+        // uint amountBeforeRate = amount.rayDiv(currentRate);
+        uint amountBeforeRate = amount.rayDiv(currentIndex);
 
         _mint(account, amountBeforeRate);
 
@@ -116,7 +120,7 @@ contract DToken is Context, IERC20 {
     function totalSupply() public view virtual override returns (uint256) {
         return
             _totalSupply.rayMul(
-                _lendingProtocol.getBorrowRate(_underlyingAsset)
+                _lendingProtocol.getBorrowIndex(_underlyingAsset)
             );
     }
 
@@ -130,9 +134,13 @@ contract DToken is Context, IERC20 {
         override
         returns (uint256)
     {
+        // console.log("_lendingProtocol.getBorrowIndex(_underlyingAsset)",_lendingProtocol.getBorrowIndex(_underlyingAsset));
+        // console.log("debt balance of",_balances[account].rayMul(
+        //         _lendingProtocol.getBorrowIndex(_underlyingAsset)
+        //     ));
         return
             _balances[account].rayMul(
-                _lendingProtocol.getBorrowRate(_underlyingAsset)
+                _lendingProtocol.getBorrowIndex(_underlyingAsset)
             );
     }
 

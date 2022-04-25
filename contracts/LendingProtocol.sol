@@ -19,17 +19,18 @@ contract LendingProtocol is Ownable {
     using WadRayMath for uint256;
     using PercentageMath for uint256;
 
-    uint256 private constant rateDecimals = 10**9; // TODO: make capital letters
     uint256 internal constant SECONDS_PER_YEAR = 365 days;
 
     struct ReserveData {
         RToken rToken; // Reserve ERC20 Token
         DToken dToken; // Debt ERC20 Token
-        uint256 collateralFactor; // 100% = 100, 75% = 75
-        uint256 liquidationIncentive; // 5% = 5
+        uint256 collateralFactor; // 100% = 100, 75% = 75 // TODO: convert to percentage math
+        uint256 liquidationIncentive; // 5% = 5 // TODO: convert to percentage math
+        uint256 interestIndex; // Cumulative interest multiplier. Init with one ray.
+        uint256 borrowIndex; // Cumulative borrow multiplier. Init with one ray.
         uint256 interestRate; // Init with one ray;
         uint256 borrowRate; // Init with one ray;
-        uint256 rateThreshold; // In ray
+        uint256 utilisationRateThreshold; // TODO: Make sure that its renamed everywhere from rateThreshold
         uint256 interestRateBase; // In ray
         uint256 interestRateSlope1; // In ray
         uint256 interestRateSlope2; // In ray
@@ -100,21 +101,23 @@ contract LendingProtocol is Ownable {
         reserve.collateralFactor = collateralFactor;
         reserve.liquidationIncentive = liquidationIncentive;
 
-        reserve.interestRate = WadRayMath.ray();
-        reserve.borrowRate = WadRayMath.ray();
         reserve.decimals = decimals; // TODO: convert to ONE UNIT and make WadRayMath count unitMul, unitDiv AND probably rename to UnitMath
         reserve.isActive = isActive;
 
+        // Setup initial interest and borrow indexing values to ONE
+        reserve.interestIndex = WadRayMath.ray();
+        reserve.borrowIndex = WadRayMath.ray();
+
         // Rate threshold for slope2 kick in
-        reserve.rateThreshold = WadRayMath.ray().percentMul(7000); // 70%
+        reserve.utilisationRateThreshold = WadRayMath.ray().percentMul(8000); // 80%
         // Interest rate params
         reserve.interestRateBase = 0;
-        reserve.interestRateSlope1 = WadRayMath.ray().percentMul(700); // 7% 
+        reserve.interestRateSlope1 = WadRayMath.ray().percentMul(700); // 7%
         reserve.interestRateSlope2 = WadRayMath.ray().percentMul(30000); // 300 %
         // Borrow rate params
-        reserve.borrowRateBase = WadRayMath.ray().percentMul(300); // 3% 
-        reserve.borrowRateSlope1 = WadRayMath.ray().percentMul(1000); // 10% 
-        reserve.borrowRateSlope2 =  WadRayMath.ray().percentMul(30000); // 300 %
+        reserve.borrowRateBase = WadRayMath.ray().percentMul(300); // 3%
+        reserve.borrowRateSlope1 = WadRayMath.ray().percentMul(1000); // 10%
+        reserve.borrowRateSlope2 = WadRayMath.ray().percentMul(30000); // 300 %
 
         // Init update timestamp
         reserve.lastUpdateTimestamp = uint40(block.timestamp);
@@ -134,15 +137,15 @@ contract LendingProtocol is Ownable {
     /**
      * @dev
      */
-    function getInterestRate(address asset) external view returns (uint256) {
-        return _reserves[asset].interestRate;
+    function getInterestIndex(address asset) external view returns (uint256) {
+        return _calculateInterestIndex(_reserves[asset]);
     }
 
     /**
      * @dev
      */
-    function getBorrowRate(address asset) external view returns (uint256) {
-        return _reserves[asset].borrowRate;
+    function getBorrowIndex(address asset) external view returns (uint256) {
+        return _calculateBorrowIndex(_reserves[asset]);
     }
 
     /**
@@ -154,6 +157,9 @@ contract LendingProtocol is Ownable {
         require(amount != 0, Errors.ZERO_AMOUNT);
         require(reserve.isActive, Errors.RESERVE_INACTIVE);
 
+        _calculateIndexes(reserve);
+        _calculateRates(reserve, amount, 0, 0, 0);
+
         IERC20(asset).safeTransferFrom(
             msg.sender,
             address(reserve.rToken),
@@ -163,7 +169,7 @@ contract LendingProtocol is Ownable {
         bool isNewReserve = reserve.rToken.mint(
             msg.sender,
             amount,
-            reserve.interestRate
+            reserve.interestIndex
         );
 
         if (isNewReserve) {
@@ -241,10 +247,13 @@ contract LendingProtocol is Ownable {
             Errors.LIQUIDITY_LESS_THAN_BORROW
         );
 
+        _calculateIndexes(reserve);
+        _calculateRates(reserve, 0, 0, amount, 0);
+
         bool isNewDebt = reserve.dToken.mint(
             msg.sender,
             amount,
-            reserve.borrowRate
+            reserve.borrowIndex
         );
         if (isNewDebt) {
             UserData storage user = _users[msg.sender];
@@ -315,7 +324,7 @@ contract LendingProtocol is Ownable {
             );
         }
 
-        bool isZeroDebtBalance = debt.dToken.burn(user, debtAmountNeeded);
+        bool isZeroDebtBalance = debt.dToken.burn(user, debtAmountNeeded, debt.borrowIndex);
         // Remove debt address from user data when fully repaid
         if (isZeroDebtBalance) {
             _removeAddressFromArray(
@@ -387,7 +396,9 @@ contract LendingProtocol is Ownable {
                 userCollateralBalance
             );
 
-        // console.log("FINAL LIQUIDATION", collateralAmount, debtAmountNeeded);
+        // Recalculate only debt reserve, collateral stays the same as we are sending RToken for now
+        _calculateIndexes(debt);
+        _calculateRates(debt, 0, 0, 0, debtAmountNeeded);
 
         _executeLiquidationTransfers(
             collateral,
@@ -406,26 +417,6 @@ contract LendingProtocol is Ownable {
             msg.sender
         );
     }
-    
-    /**
-    * @dev Return reserve utilistation rate, expressed in ray. 100% is 1 ray.
-     */
-    function _getUtilisationRate(ReserveData storage reserve)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 collateralSupply = reserve.rToken.totalSupply();
-        uint256 debtSupply = reserve.dToken.totalSupply();
-
-        if (collateralSupply == 0) {
-            return 0;
-        }
-
-        uint utilisationRate = debtSupply.rayDiv(collateralSupply);
-
-        return utilisationRate;
-    }
 
     /**
      * @dev
@@ -433,6 +424,200 @@ contract LendingProtocol is Ownable {
     function getUtilisationRate(address asset) external view returns (uint256) {
         ReserveData storage reserve = _reserves[asset];
 
-        return _getUtilisationRate(reserve);
+        return _calculateUtilisationRate(reserve, 0, 0, 0, 0);
+    }
+
+    /**
+     * @dev
+     */
+    function _calculateRateBelowTreshold(
+        uint256 utilisationRate,
+        uint256 rateThreshold,
+        uint256 base,
+        uint256 slope1
+    ) internal pure returns (uint256) {
+        uint256 slope1Factor = utilisationRate.rayDiv(rateThreshold);
+
+        return base + slope1Factor.rayMul(slope1);
+    }
+
+    /**
+     * @dev
+     */
+    function _calculateRateAboveThreshold(
+        uint256 utilisationRate,
+        uint256 rateThreshold,
+        uint256 base,
+        uint256 slope1,
+        uint256 slope2
+    ) internal pure returns (uint256) {
+        uint256 slope1Factor = utilisationRate.rayDiv(rateThreshold);
+        uint256 slope2Factor = (utilisationRate - rateThreshold).rayDiv(
+            WadRayMath.ray() - rateThreshold
+        );
+
+        return base + slope1Factor.rayMul(slope1) + slope2Factor.rayMul(slope2);
+    }
+
+    /**
+     * @dev
+     */
+    function _calculateRate(
+        uint256 utilisationRate,
+        uint256 rateThreshold,
+        uint256 base,
+        uint256 slope1,
+        uint256 slope2
+    ) internal pure returns (uint256) {
+        uint256 rate;
+        if (utilisationRate <= rateThreshold) {
+            rate = _calculateRateBelowTreshold(
+                utilisationRate,
+                rateThreshold,
+                base,
+                slope1
+            );
+        } else {
+            rate = _calculateRateAboveThreshold(
+                utilisationRate,
+                rateThreshold,
+                base,
+                slope1,
+                slope2
+            );
+        }
+
+        return rate;
+    }
+
+    /**
+     * @dev
+     */
+    function _calculateIndex(uint256 rate, uint256 lastUpdateTimestamp)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 timePased = block.timestamp - lastUpdateTimestamp;
+
+        return ((rate * timePased) / SECONDS_PER_YEAR) + WadRayMath.ray();
+    }
+
+    /**
+     * @dev
+     */
+    function _calculateInterestIndex(ReserveData storage reserve)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 cumulatedInterestIndex = _calculateIndex(
+            reserve.interestRate,
+            reserve.lastUpdateTimestamp
+        );
+
+        return reserve.interestIndex.rayMul(cumulatedInterestIndex);
+    }
+
+    /**
+     * @dev
+     */
+    function _calculateBorrowIndex(ReserveData storage reserve)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 cumulatedBorrowIndex = _calculateIndex(
+            reserve.borrowRate,
+            reserve.lastUpdateTimestamp
+        );
+
+        return reserve.borrowIndex.rayMul(cumulatedBorrowIndex);
+    }
+
+    /**
+     * @dev
+     */
+    function _calculateIndexes(ReserveData storage reserve) internal {
+        // If there is any interest
+        if (reserve.interestRate > 0) {
+            reserve.interestIndex = _calculateInterestIndex(reserve);
+
+            // if there is any borrow
+            if (reserve.borrowRate > 0) {
+                reserve.borrowIndex = _calculateBorrowIndex(reserve);
+            }
+        }
+    }
+
+    /**
+     * @dev Return reserve utilistation rate, expressed in ray. 100% is 1 ray.
+     */
+    function _calculateUtilisationRate(
+        ReserveData storage reserve,
+        uint256 collateralAdded,
+        uint256 collateralTaken,
+        uint256 debtAdded,
+        uint256 debtTaken
+    ) internal view returns (uint256) {
+        uint256 collateralSupply = reserve.rToken.totalSupply();
+        uint256 debtSupply = reserve.dToken.totalSupply();
+
+        // console.log("collateralSupply", collateralSupply);
+        // console.log("debtSupply", debtSupply);
+
+        if (collateralSupply == 0) {
+            // console.log("utilistation rate return 0");
+            return 0;
+        }
+
+        uint256 utilisationRate = (debtSupply + debtAdded - debtTaken).rayDiv(
+            collateralSupply + collateralAdded - collateralTaken
+        );
+
+        // console.log("utilisationRate", utilisationRate);
+
+        return utilisationRate;
+    }
+
+    /**
+     * @dev
+     */
+    function _calculateRates(
+        ReserveData storage reserve,
+        uint256 collateralAdded,
+        uint256 collateralTaken,
+        uint256 debtAdded,
+        uint256 debtTaken
+    ) internal {
+        uint256 utilisationRate = _calculateUtilisationRate(
+            reserve,
+            collateralAdded,
+            collateralTaken,
+            debtAdded,
+            debtTaken
+        );
+
+        if (utilisationRate > 0) {
+            reserve.interestRate = _calculateRate(
+                utilisationRate,
+                reserve.utilisationRateThreshold,
+                reserve.interestRateBase,
+                reserve.interestRateSlope1,
+                reserve.interestRateSlope2
+            );
+            // console.log("reserve.interestRate", reserve.interestRate);
+
+            reserve.borrowRate = _calculateRate(
+                utilisationRate,
+                reserve.utilisationRateThreshold,
+                reserve.borrowRateBase,
+                reserve.borrowRateSlope1,
+                reserve.borrowRateSlope2
+            );
+            // console.log("reserve.borrowRate", reserve.borrowRate);
+        }
+
+        reserve.lastUpdateTimestamp = uint40(block.timestamp);
     }
 }

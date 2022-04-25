@@ -10,11 +10,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../LendingProtocol.sol";
 import "../libraries/WadRayMath.sol";
 
-
-/**
-  TODO: extend with erc20, erc20 burnable, ownable (?), pausable (?)
- */
-
 /**
  * @dev Reserve Token
  * TODO: MAKE SURE THAT CORE FUNCTIONS OF ERC20 MAKES SENSE
@@ -62,15 +57,32 @@ contract RToken is Context, IERC20 {
     function mint(
         address account,
         uint256 amount,
-        uint256 currentRate
+        uint256 currentIndex
     ) external onlyLendingProtocol returns (bool) {
         uint256 balanceBefore = balanceOf(account);
 
-        uint amountBeforeRate = amount.rayDiv(currentRate);
+        uint256 amountBeforeRate = amount.rayDiv(currentIndex);
 
         _mint(account, amountBeforeRate);
 
         return balanceBefore == 0;
+    }
+
+    /**
+     * @dev
+     */
+    function burn(
+        address account,
+        uint256 amount,
+        uint256 index
+    ) external onlyLendingProtocol returns (bool) {
+        uint256 amountBeforeIndex = amount.rayDiv(index);
+
+        _burn(account, amountBeforeIndex);
+
+        IERC20(_underlyingAsset).safeTransfer(account, amount);
+
+        return balanceOf(account) == 0;
     }
 
     /**
@@ -134,7 +146,7 @@ contract RToken is Context, IERC20 {
     function totalSupply() public view virtual override returns (uint256) {
         return
             _totalSupply.rayMul(
-                _lendingProtocol.getInterestRate(_underlyingAsset)
+                _lendingProtocol.getInterestIndex(_underlyingAsset)
             );
     }
 
@@ -148,9 +160,13 @@ contract RToken is Context, IERC20 {
         override
         returns (uint256)
     {
+        // console.log("_lendingProtocol.getInterestIndex(_underlyingAsset)", _lendingProtocol.getInterestIndex(_underlyingAsset));
+        // console.log("interest balance of", _balances[account].rayMul(
+        //         _lendingProtocol.getInterestIndex(_underlyingAsset)
+        //     ));
         return
             _balances[account].rayMul(
-                _lendingProtocol.getInterestRate(_underlyingAsset)
+                _lendingProtocol.getInterestIndex(_underlyingAsset)
             );
     }
 
