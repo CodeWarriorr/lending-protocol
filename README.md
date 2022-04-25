@@ -23,7 +23,8 @@
     * Oprocentowanie pożyczek > Oprocentowanie depozytu
 
 
-##### Potential improvements
+### Potential improvements
 1. Limit liquidation to protect user by preventing liquidation of whole collaterall balance
 1. RToken could be transferrable up to user positive liquidity
 1. Liquidation could transfer underlying asset instead of RToken
+1. Customisable interest and borrow resserve params like base, slope, utilisation threshold. OR Introduce multiple interest and borrow strategies in form of separate smart contract.
