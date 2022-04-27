@@ -180,9 +180,10 @@ contract RToken is Context, IERC20 {
         override
         returns (bool)
     {
-        address owner = _msgSender();
-        _transfer(owner, to, amount);
-        return true;
+        to;
+        amount;
+        require(false, "TRANSFER_NOT_SUPPORTED");
+        return false;
     }
 
     /**
@@ -195,7 +196,10 @@ contract RToken is Context, IERC20 {
         override
         returns (uint256)
     {
-        return _allowances[owner][spender];
+        owner;
+        spender;
+        require(false, "ALLOWANCE_NOT_SUPPORTED");
+        return 0;
     }
 
     /**
@@ -214,9 +218,10 @@ contract RToken is Context, IERC20 {
         override
         returns (bool)
     {
-        address owner = _msgSender();
-        _approve(owner, spender, amount);
-        return true;
+        spender;
+        amount;
+        require(false, "APPROVE_NOT_SUPPORTED");
+        return false;
     }
 
     /**
@@ -240,10 +245,11 @@ contract RToken is Context, IERC20 {
         address to,
         uint256 amount
     ) public virtual override returns (bool) {
-        address spender = _msgSender();
-        _spendAllowance(from, spender, amount);
-        _transfer(from, to, amount);
-        return true;
+        from;
+        to;
+        amount;
+        require(false, "TRANSFER_FROM_NOT_SUPPORTED");
+        return false;
     }
 
     /**
@@ -263,9 +269,10 @@ contract RToken is Context, IERC20 {
         virtual
         returns (bool)
     {
-        address owner = _msgSender();
-        _approve(owner, spender, _allowances[owner][spender] + addedValue);
-        return true;
+        spender;
+        addedValue;
+        require(false, "INCREASE_ALLOWANCE_NOT_SUPPORTED");
+        return false;
     }
 
     /**
@@ -287,17 +294,10 @@ contract RToken is Context, IERC20 {
         virtual
         returns (bool)
     {
-        address owner = _msgSender();
-        uint256 currentAllowance = _allowances[owner][spender];
-        require(
-            currentAllowance >= subtractedValue,
-            "ERC20: decreased allowance below zero"
-        );
-        unchecked {
-            _approve(owner, spender, currentAllowance - subtractedValue);
-        }
-
-        return true;
+        spender;
+        subtractedValue;
+        require(false, "DECREASED_ALLOWANCE_NOT_SUPPORTED");
+        return false;
     }
 
     /**
@@ -413,30 +413,30 @@ contract RToken is Context, IERC20 {
         emit Approval(owner, spender, amount);
     }
 
-    /**
-     * @dev Spend `amount` form the allowance of `owner` toward `spender`.
-     *
-     * Does not update the allowance amount in case of infinite allowance.
-     * Revert if not enough allowance is available.
-     *
-     * Might emit an {Approval} event.
-     */
-    function _spendAllowance(
-        address owner,
-        address spender,
-        uint256 amount
-    ) internal virtual {
-        uint256 currentAllowance = allowance(owner, spender);
-        if (currentAllowance != type(uint256).max) {
-            require(
-                currentAllowance >= amount,
-                "ERC20: insufficient allowance"
-            );
-            unchecked {
-                _approve(owner, spender, currentAllowance - amount);
-            }
-        }
-    }
+    // /**
+    //  * @dev Spend `amount` form the allowance of `owner` toward `spender`.
+    //  *
+    //  * Does not update the allowance amount in case of infinite allowance.
+    //  * Revert if not enough allowance is available.
+    //  *
+    //  * Might emit an {Approval} event.
+    //  */
+    // function _spendAllowance(
+    //     address owner,
+    //     address spender,
+    //     uint256 amount
+    // ) internal virtual {
+    //     uint256 currentAllowance = allowance(owner, spender);
+    //     if (currentAllowance != type(uint256).max) {
+    //         require(
+    //             currentAllowance >= amount,
+    //             "ERC20: insufficient allowance"
+    //         );
+    //         unchecked {
+    //             _approve(owner, spender, currentAllowance - amount);
+    //         }
+    //     }
+    // }
 
     /**
      * @dev Hook that is called before any transfer of tokens. This includes
